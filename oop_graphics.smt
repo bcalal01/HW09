@@ -1,0 +1,390 @@
+;; oop_graphics.smt
+;;
+;; Starter code for Part B of Homework 09, CS 105: Programming Langauges
+;;
+;; This homework (and starter code) is adapted from an assignment for a
+;; Programming Languages course at the University of Washington.
+;;
+;; Edited for CS 105 by Sasha Fedchin and Richard Townsend
+;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;; Helper Blocks (that look like functions) and Definitions ;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(val epsilon ((1 / 1000) asFloat))
+
+(define float-close (f1 f2)
+  (((f1 - f2) abs) < epsilon))
+
+(define float-close-point (x1 y1 x2 y2)
+  ((float-close value:value: x1 x2) and: {(float-close value:value: y1 y2)}))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  Classes comprising the interpreter (Problems 3-5)
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(class GeometryExpression
+  [subclass-of Object]
+
+  (method evalProg: (env) (self subclassResponsibility))
+
+  (method inline () (self inline:With (Dictionary new)))
+  (method inline:With (env) (self subclassResponsibility))
+)
+
+
+
+(class GeometryValue
+  [subclass-of GeometryExpression]
+
+  ;; All values are by definition already evaluated
+  (method evalProg: (env) self)
+
+  (method shift:Dx:Dy (dx dy) (self subclassResponsibility))
+
+  ;; Generate the line that intersects two given points
+  (class-method two:Points:To:Line: (x1 y1 x2 y2) [locals m b]
+    ((float-close value:value: x1 x2) 
+     ifTrue:ifFalse: 
+        {(VerticalLine withX: x1)} 
+        {(set m ((y1 - y2) / (x1 - x2)))
+         (set b (y2 - (m * x2)))
+         (Line withM:b: m b)}))
+
+  (method intersect: (aGeoExpression) (self subclassResponsibility))
+  (method intersect:NoPoints (np) np)
+  (method intersect:LineSegment (seg)
+    ((self intersect: (GeometryValue two:Points:To:Line:
+                      (seg x1) (seg y1) (seg x2) (seg y2))) 
+     intersect:SegmentAsLineResult seg))
+  (method intersect:SegmentAsLineResult (seg) (self subclassResponsibility))
+)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;               Geometry value classes                     ;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(class NoPoints
+  [subclass-of GeometryValue]
+
+  (method shift:Dx:Dy (dx dy) self)
+
+  (method intersect: (other) (other intersect:NoPoints self))
+  (method intersect:Point (p) self)
+  (method intersect:Line (line) self)
+  (method intersect:VerticalLine (vline) self)
+  (method intersect:SegmentAsLineResult (seg) self)
+
+)
+
+
+
+(class Point
+  [subclass-of GeometryValue]
+  [ivars x y]
+
+  (class-method withX:y: (x y) ((self new) initX:andY: x y))
+  (method initX:andY: (anX aY) ;; private
+    (set x anX)
+    (set y aY)
+    self)
+
+  (method x () x)
+  (method y () y)
+
+)
+
+
+
+(class Line
+  [subclass-of GeometryValue]
+  [ivars m b]
+
+  (class-method withM:b: (m b) ((self new) initM:andB: m b))
+  (method initM:andB: (anM aB) ;; private
+    (set m anM)
+    (set b aB)
+    self)
+
+  (method m () m)
+  (method b () b)
+
+)
+
+
+
+(class VerticalLine
+  [subclass-of GeometryValue]
+  [ivars x]
+
+  (class-method withX: (x) ((self new) initX: x))
+  (method initX: (anX) ;; private
+    (set x anX)
+    self)
+
+  (method x () x)
+
+)
+
+
+
+(class LineSegment
+  [subclass-of GeometryValue]
+  [ivars x1 y1 x2 y2]
+
+  (class-method withX1:y1:x2:y2: (x1 y1 x2 y2)
+        ((self new) initX1:andY1:andX2:andY2: x1 y1 x2 y2))
+  (method initX1:andY1:andX2:andY2: (anX1 aY1 anX2 aY2) ;; private
+    (set x1 anX1)
+    (set x2 anX2)
+    (set y1 aY1)
+    (set y2 aY2)
+    self)
+
+  (method x1 () x1)
+  (method y1 () y1)
+  (method x2 () x2)
+  (method y2 () y2)
+
+
+  ;; Below is the hardest part of the intersection logic,
+  ;; which we implemented for you, so you don't need to change it!
+  (method intersect:SegmentAsLineResult (seg) 
+    [locals first second 
+            aXend aYend aXstart aYstart 
+            bXend bYend bXstart bYstart]
+    (set first self)
+    (set second seg)
+    ((float-close value:value: x1 x2)
+      ifTrue:ifFalse:
+        {((y2 >= (seg y2)) 
+         ifTrue: 
+         {(set first seg)
+          (set second self)})}
+        {((x2 >= (seg x2)) 
+         ifTrue: 
+         {(set first seg)
+          (set second self)})})
+    (set aXend   (first x1))
+    (set aYend   (first y1))
+    (set aXstart (first x2))
+    (set aYstart (first y2))
+    (set bXend   (second x1))
+    (set bYend   (second y1))
+    (set bXstart (second x2))
+    (set bYstart (second y2))
+    ((float-close value:value: x1 x2)
+      ifTrue:ifFalse:
+        {((float-close value:value: aYend bYstart)
+           ifTrue:ifFalse:
+             {(Point withX:y: aXend aYend)}
+             {((aYend < bYstart)
+                ifTrue:ifFalse:
+                  {(NoPoints new)}
+                  {((aYend > bYend)
+                     ifTrue:ifFalse:
+                       {(LineSegment withX1:y1:x2:y2: 
+                                     bXend bYend bXstart bYstart)}
+                       {(LineSegment withX1:y1:x2:y2: 
+                                     aXend aYend bXstart bYstart)})})})}
+        {((float-close value:value: aXend bXstart)
+           ifTrue:ifFalse:
+             {(Point withX:y: aXend aYend)}
+             {((aXend < bXstart)
+                ifTrue:ifFalse:
+                  {(NoPoints new)}
+                  {((aXend > bXend)
+                     ifTrue:ifFalse:
+                       {(LineSegment withX1:y1:x2:y2: 
+                                     bXend bYend bXstart bYstart)}
+                       {(LineSegment withX1:y1:x2:y2: 
+                                     aXend aYend bXstart bYstart)})})})}))
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;               Geometry expression classes                ;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(class Intersect
+  [subclass-of GeometryExpression]
+  [ivars e1 e2]
+
+  (class-method withE1:e2: (e1 e2) ((self new) initE1:andE2: e1 e2))
+  (method initE1:andE2: (anE1 anE2) ;; private
+    (set e1 anE1)
+    (set e2 anE2)
+    self)
+
+  ;; These getters should only be used in the provided unit testing framework
+  (method e1 () e1) ;; very private!
+  (method e2 () e2) ;; very private!
+
+)
+
+(class Let
+  [subclass-of GeometryExpression]
+  [ivars s e1 e2]
+
+  (class-method withS:e1:e2: (s e1 e2) ((self new) initS:andE1:andE2: s e1 e2))
+  (method initS:andE1:andE2: (anS anE1 anE2) ;; private
+    (set s anS)
+    (set e1 anE1)
+    (set e2 anE2)
+    self)
+
+)
+
+
+
+(class Var
+  [subclass-of GeometryExpression]
+  [ivars s]
+
+  (class-method withS: (s) ((self new) initS: s))
+  (method initS: (anS) ;; private
+    (set s anS)
+    self)
+  
+)
+
+(class Shift
+  [subclass-of GeometryExpression]
+  [ivars dx dy e]
+
+  (class-method withDx:dy:e: (dx dy e) ((self new) initDx:andDy:andE: dx dy e))
+  (method initDx:andDy:andE: (aDX aDY anE) ;; private
+    (set dx aDX)
+    (set dy aDY)
+    (set e anE)
+    self)
+
+  ;; These getters should only be used in the provided unit testing framework
+  (method dx () dx) ;; very private!
+  (method dy () dy) ;; very private!
+  (method e () e)   ;; very private!
+
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; TESTING FRAMEWORK ;;
+;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; Some shorthands to use later in the tests:
+(val smidge ((1 / 10000) asFloat)) ;; smaller than our epsilon for comparison
+(val 3.2 ((32 / 10) asFloat))
+(val 4.1 ((41 / 10) asFloat))
+(val ~4.1 ((4100001 / 1000000) asFloat))
+(val -3.2 ((-32 / 10) asFloat))
+(val -4.1 ((-41 / 10) asFloat))
+(val 0.0 (0 asFloat))
+(val 1.0 (1 asFloat))
+(val 2.0 (2 asFloat))
+(val 3.0 (3 asFloat))
+(val 4.0 (4 asFloat))
+(val ~4.0 ((4000001 / 1000000) asFloat))
+(val 5.0 (5 asFloat))
+(val 6.0 (6 asFloat))
+(val 7.0 (7 asFloat))
+(val 8.0 (8 asFloat))
+(val 9.0 (9 asFloat))
+(val 10.0 (10 asFloat))
+(val 13.0 (13 asFloat))
+
+;; Use this for comparing two GeometryValue.
+;; Note: This approach does not work for non-value geometry expressions because 
+;;       they do not have getters defined. 
+(define compare:Geometry:Value: (v1 v2 eq?)
+  (((v1 isMemberOf: NoPoints)       and:
+   {(v2 isMemberOf: NoPoints)}) 
+   or:
+     {(((v1 isMemberOf: Point)                  and:
+      {((v2 isMemberOf: Point)                  and:
+      {((eq? value:value: (v1 x) (v2 x))        and:
+      {( eq? value:value: (v1 y) (v2 y))})})}) 
+   or:
+     {(((v1 isMemberOf: Line)                   and:
+      {((v2 isMemberOf: Line)                   and:
+      {((eq? value:value: (v1 m) (v2 m))        and:
+      {( eq? value:value: (v1 b) (v2 b))})})})
+   or:
+     {(((v1 isMemberOf: VerticalLine)           and:
+      {((v2 isMemberOf: VerticalLine)           and:
+      {(eq? value:value: (v1 x) (v2 x))})})
+   or:
+     {((v1 isMemberOf: LineSegment)             and:
+      {((v2 isMemberOf: LineSegment)            and:
+      {((eq? value:value: (v1 x1) (v2 x1))      and:
+      {((eq? value:value: (v1 y1) (v2 y1))      and: 
+      {((eq? value:value: (v1 x2) (v2 x2))      and: 
+      {( eq? value:value: (v1 y2) (v2 y2))})})})})})})})})}))
+
+(define close:GeometryValue: (v1 v2)
+  (compare:Geometry:Value: value:value:value: v1 v2 float-close))
+
+;; -----------------------------------------------------------------------------
+;; ------------ Testing Preprocessing ------------------------------------------
+;; -----------------------------------------------------------------------------
+
+;; Put your unit tests for preprocessing here!
+
+
+;; ------------------------------------------------------------------------
+;; ------------ Testing Shifting ------------------------------------------
+;; ------------------------------------------------------------------------
+
+;; Put your unit tests for shifting here!
+
+
+;; --------------------------------------------------------------------------
+;; ------------ Testing Evaluation ------------------------------------------
+;; --------------------------------------------------------------------------
+
+;; Evaluate a Graphics program. Given an expression e to evaluate, 
+;; preprocess it first and then evaluate it with a fresh environment.
+(define runProg: (e)
+  ((e preprocessProg) evalProg: (Dictionary new)))
+
+;; Check whether evaluating geometric expression e yields an expected result.
+(define check:Prog: (e result)
+  (close:GeometryValue: value:value: (runProg: value: e) result))
+
+
+;; Put your unit tests for program evaluation here!
+
+;; -----------------------------------------------------------------------------
+;; ------------ Testing Inlining --------------------------------------------
+;; -----------------------------------------------------------------------------
+
+;; We can use this for inline testing because we should have the exact same
+;; object as what was bound to a variable taking the place of that variable.
+(define float-exact (f1 f2) (f1 = f2))
+
+;; Use this to compare Geometry Expressions (without Let or Var)
+(define compare:Geometry:ExpressionSimpl: (v1 v2 eq?)
+  ((compare:Geometry:Value: value:value:value: v1 v2 eq?) 
+   or: {(((v1 isMemberOf: Shift) and: 
+        {((v2 isMemberOf: Shift) and: 
+        {(((v1 dx) = (v2 dx)) and: 
+        {(((v1 dy) = (v2 dy)) and: 
+        {(compare:Geometry:ExpressionSimpl: 
+          value:value:value: (v1 e) (v2 e) eq?)})})})}) 
+   or: {((v1 isMemberOf: Intersect) and: 
+       {((v2 isMemberOf: Intersect) and: 
+       {((compare:Geometry:ExpressionSimpl: 
+          value:value:value: (v1 e1) (v2 e1) eq?) and: 
+        {(compare:Geometry:ExpressionSimpl: 
+          value:value:value: (v1 e2) (v2 e2) eq?)})})})})}))
+
+;; Check whether inlining, then preprocessing geometric expression e 
+;; is equivalent to (not just close enough to) geometric literal ans.
+(define check:inline: (e ans)
+  ([block (e1 e2) (compare:Geometry:ExpressionSimpl: 
+                   value:value:value: e1 e2 float-exact)] 
+   value:value: ((e preprocessProg) inline) ans))
+
+;; Put your unit tests for inlining here!

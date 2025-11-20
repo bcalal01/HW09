@@ -27,21 +27,21 @@ example.
 
     In `(shapes add: aShape)`,
     
-      - The receiver is ...
-      - The argument is ...
-      - The message name is ...
+      - The receiver is shapes
+      - The argument is aShape
+      - The message name is add:
 
     In `(shape drawOn: aCanvas)`,
     
-      - The receiver is ...
-      - The argument is ...
-      - The message name is ...
+      - The receiver is shape
+      - The argument is aCanvas
+      - The message name is drawOn:
 
     In `(shapes do: [block (shape) (shape drawOn: aCanvas)])`,
     
-      - The receiver is ...
-      - The argument is ...
-      - The message name is ...
+      - The receiver is shapes
+      - The argument is [block (shape) (shape drawOn: aCanvas)]
+      - The message name is do:
 
 
     _You can now start to read code examples._
@@ -57,13 +57,13 @@ example.
     Given this information, how many arguments do each of the following messages
     take:
 
-      - `+` takes ... argument(s).
+      - `+` takes 1 argument(s).
 
-      - `<=` takes ... argument(s).
+      - `<=` takes 1 argument(s).
 
-      - `print` takes ... argument(s).
+      - `print` takes 0 argument(s).
 
-      - `draw:width:height:` takes ... argument(s).
+      - `draw:width:height:` takes 3 argument(s).
 
 
     _You now know what a message's name tells you about how to use it._
@@ -77,25 +77,25 @@ example.
     (a) Of the message names used in the transcript, which ones are
         part of the _class_ protocol for `Picture`?
 
-        >
+        > empty
         
 
         Which message names are part of the _instance_ protocol for
         `Picture`?
 
-        >
+        > add: and renderUsing:
 
     
         Which message names are part of the _class_ protocol for
         `TikzCanvas`?
 
-        >
+        > new
         
 
         Which message names are part of the _instance_ protocol for
         `TikzCanvas`?
 
-        >
+        > none of them
 
 
     (b) In general, what do you do with messages in a _class_ protocol, and how
@@ -106,7 +106,8 @@ example.
           - A class object
           - An instance of a class
         
-        >
+        > messages in a class protocol are sent to a class object, whereas
+            messages in an instance protocol are sent to an instance of a class
 
 
     _You now know what you can do with each kind of message described
@@ -123,9 +124,8 @@ learn about the mechanisms of message send and dynamic dispatch .
 
     Please edit this answer to put in the correct methods and classes:
 
-      - Dispatch to method m1 on class ?
-      - Dispatch to method  ? on class ?
-        ...
+      - Dispatch to method m1 on class B
+      - Dispatch to method m2 on class C
 
     _You are starting to understand the key mechanism behind all of
     object-oriented programming._
@@ -157,14 +157,21 @@ conditionals in SmallTalk.
         include a statement of what messages are sent to what objects
         and what method definition each message dispatches to.
 
-        >
+        > The class Object has a method isNil, which is defined to return false, 
+         which means that any subclass of Object will inherit Object's isNil 
+         method, returning false when sent the isNil message. On the other hand,
+         when nil receives isNil, it dispatches to the isNil method of the 
+         UndefinedObject class, which is defined to return true.
+         
 
 
     (b) Explain _why_ it is desirable to implement object-oriented
         code without explicit conditional tests, and indeed, without
         ever asking an object, "how were you formed?"
 
-        >
+        > It reduces the amount of code repetition--it's easier to extend the 
+        code and add new cases by adding new classes, since you don't have to 
+        repeatedly add conditional checks for new classes
 
 
     _You are starting to learn how to work effectively in a world
@@ -215,10 +222,10 @@ For question 6, read section 10.4.6 (stopping after getting to the end of page
                    the message from         Fraction        Number
                    the interactive prompt)
 
-        negated    Number                     ?                 ?
+        negated    Number                   Fraction        Fraction?
 
 
-        +             ?                       ?                 ?
+        +          Number                   Fraction        Fraction?
 
                          ... fill in the ? marks ...
 
@@ -240,7 +247,7 @@ design.
         with double dispatch, what is the name of the message it should send in
         response to a `+` message? 
 
-        > 
+        > addLargeIntegerTo:
 
 
     (b) Consider the execution of the following message send, where `lint` and
@@ -253,9 +260,9 @@ design.
         which will be referred to by name `self`? Use the names `sint` and/or
         `lint` to answer.
 
-        > ??? will be bound to `anInteger`
+        > lint will be bound to `anInteger`
         
-        > `self` will refer to ???
+        > `self` will refer to sint
     
     (c) In the 7 lessons reading, methods `timesPos:` and `timesNeg:` were
         implemented. Given these methods and what you've learned about double
@@ -263,7 +270,7 @@ design.
         `LargePositiveInteger` class. It will be very similar to the code
         chunk on page 667, and it should use either `timesPos:` or `timesNeg:`.
 
-        >
+        > (method * (anInteger) (anInteger timesPos: self))
 
     _You are starting to get familiar with double dispatch, which is the main
     focus of problem 4 on the assignment._

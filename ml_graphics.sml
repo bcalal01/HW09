@@ -17,7 +17,7 @@ datatype geom_exp =
   | Intersect of geom_exp * geom_exp
   | Let of string * geom_exp * geom_exp
   | Var of string
-  (* TODO: add Shift data constructor definition in Problem 2 *)
+  | Shift of real * real * geom_exp
 
 type env = (string * geom_exp) list
 
@@ -186,11 +186,40 @@ fun evalProg e rho =
               | SOME (_, v) => v)
   | Let (s, e1, e2)    => evalProg e2 ((s, evalProg e1 rho) :: rho)
   | Intersect (e1, e2) => intersect (evalProg e1 rho, evalProg e2 rho)
-  (* TODO: add case for Shift in Problem 2*)
+  | Shift (dx, dy, e1) =>
+        case e1 of
+            Point (x, y)   => Point (x + dx, y + dy)
+          | Line (m, b)    => Line (m, b + dy - m * dx)
+          | VerticalLine x => VerticalLine (x + dx)
+          | LineSegment (x1, y1, x2, y2) => LineSegment (x1 + dx, y1 + dy, x2 + dx, y2 + dy)
+          | _              => evalProg e1 rho
+          
 
-(* TODO: Implement in Problem 1 *)
+(* preprocessProg: geom_exp -> geom_exp
+ *
+ * this function takes a geometric expression and preprocesses it to satisfy
+ * the criteria for LineSegments. it returns the preprocessed geometric 
+ * expression.
+ *)
 fun preprocessProg e =
-  raise NotImplemented 
+  case e of 
+    LineSegment (x1, y1, x2, y2) => 
+      let val closeEnough = realClosePoint x1 y1 x2 y2
+      in
+        if closeEnough
+          then Point (x1, y1)
+          else
+            let val horiBackwards = x1 < x2
+                val horiCloseEnough = realClose x1 x2
+                val vertBackwards = y1 < y2
+            in if horiCloseEnough andalso vertBackwards
+                then LineSegment (x2, y2, x1, y1)
+                else if horiBackwards then LineSegment (x2, y2, x1, y1)
+                else e
+            end
+      end
+  | Shift (dx, dy, e1) => Shift (dx, dy, (preprocessProg e1))
+  | _ => e
 
 (* runProg : geom_exp -> geom_exp 
  *
@@ -291,14 +320,70 @@ fun checkEval description input output =
 
 (**** Testing Shifting ****)
 
-(* TODO: Put your additional unit tests for Problem 2 here *)
+(* OUR UNIT TESTS: *)
  
+        val _ = checkEval
+            "Shift: point by just dy"
+            (Shift (0.0, 2.0, Point (3.0, 5.0)))
+            (Point (3.0, 7.0))
 
-(* TODO: Uncomment these unit tests when you're ready to test your work for
-   Problem 2. Delete lines "COMMENT START" and "COMMENT END" to uncomment these
-   tests. *)
+        val _ = checkEval
+            "Shift: point by nothing"
+            (Shift (0.0, 0.0, Point (3.0, 5.0)))
+            (Point (3.0, 5.0))
 
-(* COMMENT START
+        val _ = checkEval
+            "Shift: point by dx and dy"
+            (Shift (2.0, 2.0, Point (3.0, 5.0)))
+            (Point (5.0, 7.0))
+
+        val _ = checkEval
+            "Shift: VerticalLine by just dx"
+            (Shift (6.18, 0.0, VerticalLine(2.2)))
+            (VerticalLine 8.38)
+
+        val _ = checkEval
+            "Shift: VerticalLine by just dy"
+            (Shift (0.0, 6.0, VerticalLine(2.2)))
+            (VerticalLine 2.2)
+
+        val _ = checkEval
+            "Shift: Line by just dy"
+            (Shift (0.0, 6.0, Line(1.0, 1.0)))
+            (Line(1.0, 7.0))
+
+        val _ = checkEval
+            "Shift: Line by just dx"
+            (Shift (3.0, 0.0, Line(1.0, 1.0)))
+            (Line(1.0, ~2.0))
+
+        val _ = checkEval
+            "Shift: Line by dx and dy"
+            (Shift (1.0, 6.0, Line(1.0, 1.0)))
+            (Line(1.0, 6.0))
+
+        val _ = checkEval
+            "Shift: LineSegment by just dy (with preprocessing)"
+            (Shift (0.0, 1.0, LineSegment(2.2, 1.0, 3.2, ~2.0)))
+            (LineSegment (3.2, ~1.0, 2.2, 2.0))
+
+        val _ = checkEval
+            "Shift: LineSegment by just dy (no preprocessing)"
+            (Shift (0.0, 1.0, LineSegment(3.2, ~2.0, 2.2, 1.0)))
+            (LineSegment (3.2, ~1.0, 2.2, 2.0))
+
+        val _ = checkEval
+            "Shift: LineSegment by both dx and dy (with preprocessing)"
+            (Shift (2.2, 1.0, LineSegment(2.2, 1.0, 3.2, ~2.0)))
+            (LineSegment (5.4, ~1.0, 4.4, 2.0))
+
+        val _ = checkEval
+            "Shift: LineSegment by dx and dy (no preprocessing)"
+            (Shift (2.2, 1.0, LineSegment(3.2, ~2.0, 2.2, 1.0)))
+            (LineSegment (5.4, ~1.0, 4.4, 2.0))
+
+
+(* PROVIDED UNIT TESTS: *)
 
         val _ = checkEval
             "Shift: point by just dx"
@@ -325,8 +410,9 @@ fun checkEval description input output =
             (Shift (6.18, 0.0, LineSegment(3.2, 1.0, 2.2, ~2.0)))
             (LineSegment (9.38, 1.0, 8.38, ~2.0))
 
+        
 
-COMMENT END *)
+
 
         
 (**** Testing intersection of line segments (from U Washington) ****)

@@ -219,6 +219,8 @@ fun preprocessProg e =
             end
       end
   | Shift (dx, dy, e1) => Shift (dx, dy, (preprocessProg e1))
+  | Let (x, e1, e2) => Let (x, preprocessProg e1, preprocessProg e2)
+  | Intersect (e1, e2) => Intersect (preprocessProg e1, preprocessProg e2)
   | _ => e
 
 (* runProg : geom_exp -> geom_exp 

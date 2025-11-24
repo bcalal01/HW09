@@ -33,6 +33,8 @@
 
   (method inline () (self inline:With (Dictionary new)))
   (method inline:With (env) (self subclassResponsibility))
+
+  (method preprocessProg () self) ;; superclass definition of preprocess
 )
 
 
@@ -78,6 +80,8 @@
   (method intersect:Line (line) self)
   (method intersect:VerticalLine (vline) self)
   (method intersect:SegmentAsLineResult (seg) self)
+
+  (method preprocessProg () self) ;; private
 
 )
 
@@ -149,6 +153,21 @@
   (method y1 () y1)
   (method x2 () x2)
   (method y2 () y2)
+
+  (method preprocessProg ()
+    [locals isClosePoints horiBackwards horiCloseEnough vertBackwards]
+    (set isClosePoints (float-close-point value:value:value:value: x1 y1 x2 y2))
+    (set horiBackwards (x1 < x2))
+    (set horiCloseEnough (float-close value:value: x1 x2))
+    (set vertBackwards (y1 < y2))
+
+    (isClosePoints ifTrue:ifFalse:
+        {(Point withX:y: x1 y1)}
+        {((horiCloseEnough & vertBackwards) ifTrue:ifFalse:
+          {(LineSegment withX1:y1:x2:y2: x2 y2 x1 y1)}
+          {(horiBackwards ifTrue:ifFalse:
+            {(LineSegment withX1:y1:x2:y2: x2 y2 x1 y1)}
+            {self})})}))
 
 
   ;; Below is the hardest part of the intersection logic,
@@ -223,7 +242,11 @@
   (method e1 () e1) ;; very private!
   (method e2 () e2) ;; very private!
 
-)
+  (method preprocessProg () ;; private ?
+    ((Intersect new) initE1:andE2: (e1 preprocessProg) (e2 preprocessProg))
+    ))
+
+
 
 (class Let
   [subclass-of GeometryExpression]
@@ -236,6 +259,10 @@
     (set e2 anE2)
     self)
 
+  (method preprocessProg ()
+    ((Let new) withS:e1:e2: s (e1 preprocessProg) (e2 preprocessProg))
+  )
+
 )
 
 
@@ -247,8 +274,7 @@
   (class-method withS: (s) ((self new) initS: s))
   (method initS: (anS) ;; private
     (set s anS)
-    self)
-  
+    self)  
 )
 
 (class Shift
@@ -267,7 +293,10 @@
   (method dy () dy) ;; very private!
   (method e () e)   ;; very private!
 
-)
+  (method preprocessProg ()
+    ((Shift new) initDx:andDy:andE: dx dy (e preprocessProg))))
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; TESTING FRAMEWORK ;;
@@ -331,6 +360,58 @@
 ;; -----------------------------------------------------------------------------
 
 ;; Put your unit tests for preprocessing here!
+
+;; NoPoints
+(check-assert (close:GeometryValue: value:value:
+                ((NoPoints new) preprocessProg)
+                (NoPoints new)))
+;; Point
+(check-assert (close:GeometryValue: value:value:
+                ((Point withX:y: 3.2 4.1) preprocessProg)
+                (Point withX:y: 3.2 4.1)))
+;; Line
+(check-assert (close:GeometryValue: value:value:
+                ((Line withM:b: 2.0 4.0) preprocessProg)
+                (Line withM:b: 2.0 4.0)))
+;; Vertical Line
+(check-assert (close:GeometryValue: value:value:
+                ((VerticalLine withX: 2.0) preprocessProg)
+                (VerticalLine withX: 2.0)))
+
+;; Line Segment
+(check-assert (close:GeometryValue: value:value:
+                ((LineSegment withX1:y1:x2:y2: 1.0 2.0 1.0 2.0) preprocessProg)
+                (Point withX:y: 1.0 2.0)))
+
+(check-assert (close:GeometryValue: value:value:
+                ((LineSegment withX1:y1:x2:y2: 1.0 4.1 1.0 ~4.1) preprocessProg)
+                (Point withX:y: 1.0 4.1)))
+
+(check-assert (close:GeometryValue: value:value:
+                ((LineSegment withX1:y1:x2:y2: 1.0 ~4.1 1.0 4.1) preprocessProg)
+                (Point withX:y: 1.0 ~4.1)))
+
+(check-assert (close:GeometryValue: value:value:
+                ((LineSegment withX1:y1:x2:y2: 4.0 ~4.1 ~4.0 4.1) preprocessProg)
+                (Point withX:y: ~4.0 4.1)))
+
+(check-assert (close:GeometryValue: value:value:
+                ((LineSegment withX1:y1:x2:y2: ~4.1 4.1 4.1 ~4.1) preprocessProg)
+                (Point withX:y: ~4.1 4.1))) 
+
+(check-assert (close:GeometryValue: value:value:
+                ((LineSegment withX1:y1:x2:y2: -3.2 -4.1 3.2 4.1) preprocessProg)
+                (LineSegment withX1:y1:x2:y2: 3.2 4.1 -3.2 -4.1)))
+
+(check-assert (close:GeometryValue: value:value:
+                ((LineSegment withX1:y1:x2:y2: 1.0 2.0 1.0 3.0) preprocessProg)
+                (LineSegment withX1:y1:x2:y2: 1.0 3.0 1.0 2.0)))
+
+(check-assert (close:GeometryValue: value:value:
+                ((LineSegment withX1:y1:x2:y2: 4.1 3.0 ~4.1 6.0) preprocessProg)
+                (LineSegment withX1:y1:x2:y2: ~4.1 6.0 4.1 3.0)))
+
+
 
 
 ;; ------------------------------------------------------------------------

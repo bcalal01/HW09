@@ -81,8 +81,6 @@
   (method intersect:VerticalLine (vline) self)
   (method intersect:SegmentAsLineResult (seg) self)
 
-  (method preprocessProg () self) ;; private
-
 )
 
 
@@ -99,6 +97,8 @@
 
   (method x () x)
   (method y () y)
+
+  (method shift:Dx:Dy (dx dy) ((Point new) initX:andY: (x + dx) (y + dy)))
 
 )
 
@@ -117,6 +117,8 @@
   (method m () m)
   (method b () b)
 
+  (method shift:Dx:Dy (dx dy) ((Line new) initM:andB: m (((b + dy) - m) * dx)))
+
 )
 
 
@@ -131,6 +133,8 @@
     self)
 
   (method x () x)
+
+  (method shift:Dx:Dy (dx dy) ((VerticalLine new) initX: (x + dx)))
 
 )
 
@@ -168,6 +172,11 @@
           {(horiBackwards ifTrue:ifFalse:
             {(LineSegment withX1:y1:x2:y2: x2 y2 x1 y1)}
             {self})})}))
+
+
+    (method shift:Dx:Dy (dx dy)
+      ((LineSegment new) initX1:andY1:andX2:andY2:    ;; ok to call private class?
+        (x1 + dx) (y1 + dy) (x2 + dx) (y2 + dy)))
 
 
   ;; Below is the hardest part of the intersection logic,
@@ -242,9 +251,15 @@
   (method e1 () e1) ;; very private!
   (method e2 () e2) ;; very private!
 
-  (method preprocessProg () ;; private ?
-    ((Intersect new) initE1:andE2: (e1 preprocessProg) (e2 preprocessProg))
-    ))
+  (method preprocessProg () ;; private
+    (Intersect withE1:e2: (e1 preprocessProg) (e2 preprocessProg))
+    )
+    
+  (method evalProg: (env) (e1 intersect: e2))
+    
+)
+
+  
 
 
 
@@ -260,9 +275,27 @@
     self)
 
   (method preprocessProg ()
-    ((Let new) withS:e1:e2: s (e1 preprocessProg) (e2 preprocessProg))
+    (Let withS:e1:e2: s (e1 preprocessProg) (e2 preprocessProg))
   )
 
+  (method evalProg: (env)
+    [locals prevRes e2Res]
+    ((env includesKey: s) ifTrue:ifFalse:
+      {
+        (set prevRes (env at: s))
+        (env at:put: s (e1 evalProg: env))
+        (set e2Res (e2 evalProg: env))
+        (env at:put: s prevRes)
+        e2Res
+      }
+      {
+        (env at:put: s (e1 evalProg: env))
+        (set e2Res (e2 evalProg: env))
+        (env removeKey: s)
+        e2Res
+      }
+    )
+  )
 )
 
 
@@ -275,6 +308,8 @@
   (method initS: (anS) ;; private
     (set s anS)
     self)  
+
+    (method evalProg: (env) (env at: s))
 )
 
 (class Shift
@@ -294,7 +329,10 @@
   (method e () e)   ;; very private!
 
   (method preprocessProg ()
-    ((Shift new) initDx:andDy:andE: dx dy (e preprocessProg))))
+    (Shift withDx:dy:e: dx dy (e preprocessProg)))
+
+  (method evalProg: (env) (e shift:Dx:Dy dx dy))
+)
 
 
 
@@ -420,6 +458,29 @@
 
 ;; Put your unit tests for shifting here!
 
+;; Shifting a Point
+(check-assert (close:GeometryValue: value:value:
+                ((Point withX:y: 4.0 4.0) shift:Dx:Dy 3.0 4.0)
+                (Point withX:y: 7.0 8.0)))
+;; Shifting a VerticalLine
+(check-assert (close:GeometryValue: value:value:
+                ((VerticalLine withX: 2.0) shift:Dx:Dy 3.0 5.0)
+                (VerticalLine withX: 5.0)))
+;; Shifting a NoPoint
+(check-assert (close:GeometryValue: value:value:
+                ((NoPoints new) shift:Dx:Dy 3.0 5.0)
+                (NoPoints new)))
+
+;; Line
+(check-assert (close:GeometryValue: value:value:
+                ((Line withM:b: 1.0 1.0) shift:Dx:Dy 1.0 6.0)
+                (Line withM:b: 1.0 6.0)))
+
+;; Line Segment
+(check-assert (close:GeometryValue: value:value:
+                ((LineSegment withX1:y1:x2:y2: 1.0 5.0 2.0 1.0) shift:Dx:Dy 1.0 2.0)
+                (LineSegment withX1:y1:x2:y2: 2.0 7.0 3.0 3.0)))
+
 
 ;; --------------------------------------------------------------------------
 ;; ------------ Testing Evaluation ------------------------------------------
@@ -436,6 +497,26 @@
 
 
 ;; Put your unit tests for program evaluation here!
+
+; Check that accessing an unbound variable causes an error
+(check-error (runProg: value: (Var withS: 'a)))
+
+;; Shifting a Point
+(check-assert (check:Prog: value:value:
+                (Shift withDx:dy:e: 3.0 4.0 (Point withX:y: 4.0 4.0))
+                (Point withX:y: 7.0 8.0)))
+
+;; Let with var in body
+(check-assert (check:Prog: value:value:
+                (Let withS:e1:e2: 'x (Point withX:y: 3.2 4.1) (Var withS: 'x))
+                (Point withX:y: 3.2 4.1)))
+
+;; ;; Sequential Let, using 2nd variable
+(check-assert (check:Prog: value:value:
+                (Let withS:e1:e2: 'x (Point withX:y: 3.2 4.1)
+                  (Let withS:e1:e2: 'y (Point withX:y: 4.1 3.2)
+                  (Var withS: 'y)))
+                (Point withX:y: 4.1 3.2)))
 
 ;; -----------------------------------------------------------------------------
 ;; ------------ Testing Inlining --------------------------------------------

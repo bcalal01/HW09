@@ -100,6 +100,21 @@
 
   (method shift:Dx:Dy (dx dy) ((Point new) initX:andY: (x + dx) (y + dy)))
 
+
+  (method intersect: (other) (other intersect:Point self))
+  (method intersect:Point (p)
+    ((float-close-point value:value:value:value: x y (p x) (p y)) 
+        ifTrue:ifFalse: {self} 
+                        {(NoPoints new)}))
+  (method intersect:Line (line) 
+    ((float-close value:value: y (((line m) * x) + (line b))) 
+        ifTrue:ifFalse: {self} 
+                        {(NoPoints new)}))
+  (method intersect:VerticalLine (vline) 
+    ((float-close value:value: x (vline x)) 
+        ifTrue:ifFalse: {self} 
+                        {(NoPoints new)}))
+
 )
 
 
@@ -119,6 +134,27 @@
 
   (method shift:Dx:Dy (dx dy) ((Line new) initM:andB: m (((b + dy) - m) * dx)))
 
+  (method intersect: (other) (other intersect:Line self))
+  (method intersect:Point (p) 
+    ((float-close value:value: (p y) ((m * (p x)) + b)) 
+        ifTrue:ifFalse: {p} 
+                        {(NoPoints new)}))
+  (method intersect:Line (line) 
+    [locals realCloseM
+            realCloseB
+            pointX
+            pointY]
+    (set realCloseM (float-close value:value: m (line m)))
+    (set realCloseB (float-close value:value: b (line b)))
+    (realCloseM ifTrue:ifFalse: {(realCloseB ifTrue:ifFalse: {self} 
+                                                             {(NoPoints new)})} 
+                                {(set pointX ((b - (line b)) / (m - (line m))))
+                                 (set pointY ((m * pointX) + b))
+                                 (Point withX:y: pointX pointY)})
+  )
+  (method intersect:VerticalLine (vline)
+    (Point withX:y: (vline x) ((m * (vline x)) + b)))
+  (method intersect:SegmentAsLineResult (seg) self)
 )
 
 
@@ -135,6 +171,17 @@
   (method x () x)
 
   (method shift:Dx:Dy (dx dy) ((VerticalLine new) initX: (x + dx)))
+
+  (method intersect: (other) (other intersect:VerticalLine self))
+  (method intersect:Point (p) 
+    ((float-close value:value: (p x) x) 
+        ifTrue:ifFalse: {p} 
+                        {(NoPoints new)}))
+  (method intersect:Line (line) 
+    (Point withX:y: x (((line m) * x) + (line b))))
+  (method intersect:VerticalLine (vline) 
+    ((float-close value:value: x (vline x)) ifTrue:ifFalse: {self} {(NoPoints new)}))
+  (method intersect:SegmentAsLineResult (seg) self)
 
 )
 
@@ -177,6 +224,11 @@
     (method shift:Dx:Dy (dx dy)
       ((LineSegment new) initX1:andY1:andX2:andY2:    ;; ok to call private class?
         (x1 + dx) (y1 + dy) (x2 + dx) (y2 + dy)))
+
+  (method intersect: (other) (other intersect:LineSegment self))
+  (method intersect:Point (p) self)
+  (method intersect:Line (line) self)
+  (method intersect:VerticalLine (vline) self)
 
 
   ;; Below is the hardest part of the intersection logic,
@@ -517,6 +569,35 @@
                   (Let withS:e1:e2: 'y (Point withX:y: 4.1 3.2)
                   (Var withS: 'y)))
                 (Point withX:y: 4.1 3.2)))
+
+;; OUR TESTS
+
+;; Let with var in body (Line)
+(check-assert (check:Prog: value:value:
+                (Let withS:e1:e2: 'x (Line withM:b: 3.2 4.1) (Var withS: 'x))
+                (Line withM:b: 3.2 4.1)))
+
+;; Shifting a VerticalLine
+(check-assert (check:Prog: value:value:
+                (Shift withDx:dy:e: 3.0 5.0 (VerticalLine withX: 2.0))
+                (VerticalLine withX: 5.0)))
+
+;; Shifting a Line
+(check-assert (check:Prog: value:value:
+                (Shift withDx:dy:e: 1.0 6.0 (Line withM:b: 1.0 1.0))
+                (Line withM:b: 1.0 6.0)))
+
+;; Shifting a Line Segment
+(check-assert (check:Prog: value:value:
+                (Shift withDx:dy:e: 1.0 2.0 (LineSegment withX1:y1:x2:y2: 1.0 5.0 2.0 1.0))
+                (LineSegment withX1:y1:x2:y2:  3.0 3.0 2.0 7.0)))
+
+;; Shifting a VerticalLine
+(check-assert (check:Prog: value:value:
+                (Shift withDx:dy:e: 3.0 5.0 (NoPoints new))
+                (NoPoints new)))
+
+
 
 ;; -----------------------------------------------------------------------------
 ;; ------------ Testing Inlining --------------------------------------------

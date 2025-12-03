@@ -162,7 +162,7 @@
     (set realCloseB (float-close value:value: b (line b)))
     (realCloseM ifTrue:ifFalse: {(realCloseB ifTrue:ifFalse: {self} 
                                                              {(NoPoints new)})} 
-                                {(set pointX ((b - (line b)) / (m - (line m))))
+                                {(set pointX (((line b) - b) / (m - (line m))))
                                  (set pointY ((m * pointX) + b))
                                  (Point withX:y: pointX pointY)})
   )
@@ -412,6 +412,7 @@
 (val 3.2 ((32 / 10) asFloat))
 (val 4.1 ((41 / 10) asFloat))
 (val ~4.1 ((4100001 / 1000000) asFloat))
+(val -2.0 (-2 asFloat))
 (val -3.2 ((-32 / 10) asFloat))
 (val -4.1 ((-41 / 10) asFloat))
 (val 0.0 (0 asFloat))
@@ -426,6 +427,7 @@
 (val 8.0 (8 asFloat))
 (val 9.0 (9 asFloat))
 (val 10.0 (10 asFloat))
+(val 12.0 (12 asFloat))
 (val 13.0 (13 asFloat))
 
 ;; Use this for comparing two GeometryValue.
@@ -609,6 +611,15 @@
 ;; Shifting a VerticalLine
 (check-assert (check:Prog: value:value:
                 (Shift withDx:dy:e: 3.0 5.0 (NoPoints new))
+                (NoPoints new)))
+
+;; Intersection within a Let 
+(check-assert (check:Prog: value:value:
+                (Let withS:e1:e2: 'x (Intersect withE1:e2: (NoPoints new) (Point withX:y: 0.0 0.0)) (Var withS: 'x))
+                (NoPoints new)))
+
+(check-assert (check:Prog: value:value:
+                (Let withS:e1:e2: 'x (Point withX:y: 0.0 0.0) (Intersect withE1:e2: (Var withS: 'x) (NoPoints new)))
                 (NoPoints new)))
 
 

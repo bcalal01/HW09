@@ -115,6 +115,20 @@
         ifTrue:ifFalse: {self} 
                         {(NoPoints new)}))
 
+  (method intersect:SegmentAsLineResult (seg) 
+    [locals x1 y1 x2 y2 inRangeX1 inRangeX2 inRangeY1 inRangeY2]
+    (set x1 (seg x1))
+    (set y1 (seg y1))
+    (set x2 (seg x2))
+    (set y2 (seg y2))
+    (set inRangeX1 (((x1 - epsilon) <= x) & (x <= (x2 + epsilon))))
+    (set inRangeX2 (((x2 - epsilon) <= x) & (x <= (x1 + epsilon))))
+    (set inRangeY1 (((y1 - epsilon) <= y) & (y <= (y2 + epsilon))))
+    (set inRangeY2 (((y2 - epsilon) <= y) & (y <= (y1 + epsilon))))
+    (((inRangeX1 | inRangeX2) & (inRangeY1 | inRangeY2)) ifTrue:ifFalse: {self} {(NoPoints new)} )
+    
+  )
+
 )
 
 
@@ -154,7 +168,7 @@
   )
   (method intersect:VerticalLine (vline)
     (Point withX:y: (vline x) ((m * (vline x)) + b)))
-  (method intersect:SegmentAsLineResult (seg) self)
+  (method intersect:SegmentAsLineResult (seg) seg)
 )
 
 
@@ -181,7 +195,7 @@
     (Point withX:y: x (((line m) * x) + (line b))))
   (method intersect:VerticalLine (vline) 
     ((float-close value:value: x (vline x)) ifTrue:ifFalse: {self} {(NoPoints new)}))
-  (method intersect:SegmentAsLineResult (seg) self)
+  (method intersect:SegmentAsLineResult (seg) seg)
 
 )
 
@@ -226,9 +240,9 @@
         (x1 + dx) (y1 + dy) (x2 + dx) (y2 + dy)))
 
   (method intersect: (other) (other intersect:LineSegment self))
-  (method intersect:Point (p) self)
-  (method intersect:Line (line) self)
-  (method intersect:VerticalLine (vline) self)
+  (method intersect:Point (p) (p intersect:LineSegment self))
+  (method intersect:Line (line) (line intersect:LineSegment self))
+  (method intersect:VerticalLine (vline) (vline intersect:LineSegment self))
 
 
   ;; Below is the hardest part of the intersection logic,

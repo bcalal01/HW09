@@ -101,7 +101,7 @@ fun intersect (v1, v2) =
     in (* The hard case, actually 4 cases because v2 could be:
         * a point, line, vertical line, or line segment.
         * First compute the intersection of (1) the line containing the segment 
-        * and (2) v2. Then use that result to compute what we need. *)		
+        * and (2) v2. Then use that result to compute what we need. *)
        (case intersect (twoPointsToLine (x1, y1, x2, y2), v2) of
          NoPoints => NoPoints
        | Point (x0, y0) => (* see if the point is within the segment bounds *)
@@ -191,7 +191,8 @@ fun evalProg e rho =
             Point (x, y)   => Point (x + dx, y + dy)
           | Line (m, b)    => Line (m, b + dy - m * dx)
           | VerticalLine x => VerticalLine (x + dx)
-          | LineSegment (x1, y1, x2, y2) => LineSegment (x1 + dx, y1 + dy, x2 + dx, y2 + dy)
+          | LineSegment (x1, y1, x2, y2) => 
+                                LineSegment (x1 + dx, y1 + dy, x2 + dx, y2 + dy)
           | _              => evalProg e1 rho
           
 
@@ -218,7 +219,7 @@ fun preprocessProg e =
                 else e
             end
       end
-  | Shift (dx, dy, e1) => Shift (dx, dy, (preprocessProg e1))
+  | Shift (dx, dy, e1) => Shift (dx, dy, preprocessProg e1)
   | Let (x, e1, e2) => Let (x, preprocessProg e1, preprocessProg e2)
   | Intersect (e1, e2) => Intersect (preprocessProg e1, preprocessProg e2)
   | _ => e
@@ -341,12 +342,12 @@ fun checkEval description input output =
 
         val _ = checkEval
             "Shift: VerticalLine by just dx"
-            (Shift (6.18, 0.0, VerticalLine(2.2)))
+            (Shift (6.18, 0.0, VerticalLine 2.2))
             (VerticalLine 8.38)
 
         val _ = checkEval
             "Shift: VerticalLine by just dy"
-            (Shift (0.0, 6.0, VerticalLine(2.2)))
+            (Shift (0.0, 6.0, VerticalLine 2.2))
             (VerticalLine 2.2)
 
         val _ = checkEval
@@ -394,12 +395,12 @@ fun checkEval description input output =
 
         val _ = checkEval
             "Shift: NoPoint in expression"
-            (Shift (138.2, 2.398, (Let ("x", NoPoints, Var "x"))))
+            (Shift (138.2, 2.398, Let ("x", NoPoints, Var "x")))
             NoPoints
 
         val _ = checkEval
             "Shift: VerticalLine by dy and dx"
-            (Shift (6.18, 3.0, VerticalLine(2.2)))
+            (Shift (6.18, 3.0, VerticalLine 2.2))
             (VerticalLine 8.38)
 
         val _ = checkEval

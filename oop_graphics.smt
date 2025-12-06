@@ -7,6 +7,8 @@
 ;;
 ;; Edited for CS 105 by Sasha Fedchin and Richard Townsend
 ;;
+;; Edited for homework by Brendan Calalang & Allison Ferner
+;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;; Helper Blocks (that look like functions) and Definitions ;;;;;;;;;;
@@ -63,6 +65,8 @@
                       (seg x1) (seg y1) (seg x2) (seg y2))) 
      intersect:SegmentAsLineResult seg))
   (method intersect:SegmentAsLineResult (seg) (self subclassResponsibility))
+
+  (method inline:With (env) self)
 )
 
 
@@ -74,8 +78,9 @@
   [subclass-of GeometryValue]
 
   (method shift:Dx:Dy (dx dy) self)
-
   (method intersect: (other) (other intersect:NoPoints self))
+
+    ;;private methods
   (method intersect:Point (p) self)
   (method intersect:Line (line) self)
   (method intersect:VerticalLine (vline) self)
@@ -99,9 +104,10 @@
   (method y () y)
 
   (method shift:Dx:Dy (dx dy) ((Point new) initX:andY: (x + dx) (y + dy)))
-
-
   (method intersect: (other) (other intersect:Point self))
+
+    ;;private methods
+
   (method intersect:Point (p)
     ((float-close-point value:value:value:value: x y (p x) (p y)) 
         ifTrue:ifFalse: {self} 
@@ -115,7 +121,7 @@
         ifTrue:ifFalse: {self} 
                         {(NoPoints new)}))
 
-  (method intersect:SegmentAsLineResult (seg) 
+  (method intersect:SegmentAsLineResult (seg)
     [locals x1 y1 x2 y2 inRangeX1 inRangeX2 inRangeY1 inRangeY2]
     (set x1 (seg x1))
     (set y1 (seg y1))
@@ -125,7 +131,8 @@
     (set inRangeX2 (((x2 - epsilon) <= x) & (x <= (x1 + epsilon))))
     (set inRangeY1 (((y1 - epsilon) <= y) & (y <= (y2 + epsilon))))
     (set inRangeY2 (((y2 - epsilon) <= y) & (y <= (y1 + epsilon))))
-    (((inRangeX1 | inRangeX2) & (inRangeY1 | inRangeY2)) ifTrue:ifFalse: {self} {(NoPoints new)} )
+    (((inRangeX1 | inRangeX2) & (inRangeY1 | inRangeY2)) 
+        ifTrue:ifFalse: {self} {(NoPoints new)} )
     
   )
 
@@ -147,8 +154,10 @@
   (method b () b)
 
   (method shift:Dx:Dy (dx dy) ((Line new) initM:andB: m (((b + dy) - m) * dx)))
-
   (method intersect: (other) (other intersect:Line self))
+
+    ;;private methods
+
   (method intersect:Point (p) 
     ((float-close value:value: (p y) ((m * (p x)) + b)) 
         ifTrue:ifFalse: {p} 
@@ -185,8 +194,10 @@
   (method x () x)
 
   (method shift:Dx:Dy (dx dy) ((VerticalLine new) initX: (x + dx)))
-
   (method intersect: (other) (other intersect:VerticalLine self))
+
+    ;;private methods
+
   (method intersect:Point (p) 
     ((float-close value:value: (p x) x) 
         ifTrue:ifFalse: {p} 
@@ -194,7 +205,8 @@
   (method intersect:Line (line) 
     (Point withX:y: x (((line m) * x) + (line b))))
   (method intersect:VerticalLine (vline) 
-    ((float-close value:value: x (vline x)) ifTrue:ifFalse: {self} {(NoPoints new)}))
+    ((float-close value:value: x (vline x)) ifTrue:ifFalse: {self} 
+                                                            {(NoPoints new)}))
   (method intersect:SegmentAsLineResult (seg) seg)
 
 )
@@ -219,6 +231,11 @@
   (method x2 () x2)
   (method y2 () y2)
 
+  (method shift:Dx:Dy (dx dy)
+      ((LineSegment new) initX1:andY1:andX2:andY2:
+        (x1 + dx) (y1 + dy) (x2 + dx) (y2 + dy)))
+  (method intersect: (other) (other intersect:LineSegment self))
+
   (method preprocessProg ()
     [locals isClosePoints horiBackwards horiCloseEnough vertBackwards]
     (set isClosePoints (float-close-point value:value:value:value: x1 y1 x2 y2))
@@ -234,12 +251,8 @@
             {(LineSegment withX1:y1:x2:y2: x2 y2 x1 y1)}
             {self})})}))
 
+    ;;Private methods
 
-    (method shift:Dx:Dy (dx dy)
-      ((LineSegment new) initX1:andY1:andX2:andY2:    ;; ok to call private class?
-        (x1 + dx) (y1 + dy) (x2 + dx) (y2 + dy)))
-
-  (method intersect: (other) (other intersect:LineSegment self))
   (method intersect:Point (p) (p intersect:LineSegment self))
   (method intersect:Line (line) (line intersect:LineSegment self))
   (method intersect:VerticalLine (vline) (vline intersect:LineSegment self))
@@ -317,11 +330,14 @@
   (method e1 () e1) ;; very private!
   (method e2 () e2) ;; very private!
 
-  (method preprocessProg () ;; private
-    (Intersect withE1:e2: (e1 preprocessProg) (e2 preprocessProg))
-    )
-    
-  (method evalProg: (env) (e1 intersect: e2))
+  (method preprocessProg ()
+    (Intersect withE1:e2: (e1 preprocessProg) (e2 preprocessProg)))
+  (method evalProg: (env) ((e1 evalProg: env) intersect: (e2 evalProg: env)))
+
+    ;;Private methods
+
+  (method inline:With (env)
+    (Intersect withE1:e2: (e1 inline:With env) (e2 inline:With env)))
     
 )
 
@@ -362,6 +378,13 @@
       }
     )
   )
+
+    ;;Private methods
+
+  (method inline:With (env)
+    (env at:put: s e1)
+    (e2 inline:With env)
+  )
 )
 
 
@@ -375,7 +398,13 @@
     (set s anS)
     self)  
 
-    (method evalProg: (env) (env at: s))
+  (method evalProg: (env) (env at: s))
+
+    ;;Private methods
+
+  (method inline:With (env)
+    (env at: s)
+  )
 )
 
 (class Shift
@@ -398,6 +427,12 @@
     (Shift withDx:dy:e: dx dy (e preprocessProg)))
 
   (method evalProg: (env) (e shift:Dx:Dy dx dy))
+
+    ;;Private methods
+
+  (method inline:With (env)
+    (Shift withDx:dy:e: dx dy (e inline:With env))
+  )
 )
 
 
@@ -494,19 +529,23 @@
                 (Point withX:y: 1.0 4.1)))
 
 (check-assert (close:GeometryValue: value:value:
-                ((LineSegment withX1:y1:x2:y2: 1.0 ~4.1 1.0 4.1) preprocessProg)
+                ((LineSegment withX1:y1:x2:y2: 1.0 ~4.1 1.0 4.1) 
+                    preprocessProg)
                 (Point withX:y: 1.0 ~4.1)))
 
 (check-assert (close:GeometryValue: value:value:
-                ((LineSegment withX1:y1:x2:y2: 4.0 ~4.1 ~4.0 4.1) preprocessProg)
+                ((LineSegment withX1:y1:x2:y2: 4.0 ~4.1 ~4.0 4.1) 
+                    preprocessProg)
                 (Point withX:y: ~4.0 4.1)))
 
 (check-assert (close:GeometryValue: value:value:
-                ((LineSegment withX1:y1:x2:y2: ~4.1 4.1 4.1 ~4.1) preprocessProg)
+                ((LineSegment withX1:y1:x2:y2: ~4.1 4.1 4.1 ~4.1) 
+                    preprocessProg)
                 (Point withX:y: ~4.1 4.1))) 
 
 (check-assert (close:GeometryValue: value:value:
-                ((LineSegment withX1:y1:x2:y2: -3.2 -4.1 3.2 4.1) preprocessProg)
+                ((LineSegment withX1:y1:x2:y2: -3.2 -4.1 3.2 4.1) 
+                    preprocessProg)
                 (LineSegment withX1:y1:x2:y2: 3.2 4.1 -3.2 -4.1)))
 
 (check-assert (close:GeometryValue: value:value:
@@ -546,7 +585,8 @@
 
 ;; Line Segment
 (check-assert (close:GeometryValue: value:value:
-                ((LineSegment withX1:y1:x2:y2: 1.0 5.0 2.0 1.0) shift:Dx:Dy 1.0 2.0)
+                ((LineSegment withX1:y1:x2:y2: 1.0 5.0 2.0 1.0) 
+                    shift:Dx:Dy 1.0 2.0)
                 (LineSegment withX1:y1:x2:y2: 2.0 7.0 3.0 3.0)))
 
 
@@ -605,7 +645,8 @@
 
 ;; Shifting a Line Segment
 (check-assert (check:Prog: value:value:
-                (Shift withDx:dy:e: 1.0 2.0 (LineSegment withX1:y1:x2:y2: 1.0 5.0 2.0 1.0))
+                (Shift withDx:dy:e: 1.0 2.0 
+                    (LineSegment withX1:y1:x2:y2: 1.0 5.0 2.0 1.0))
                 (LineSegment withX1:y1:x2:y2:  3.0 3.0 2.0 7.0)))
 
 ;; Shifting a VerticalLine
@@ -615,12 +656,33 @@
 
 ;; Intersection within a Let 
 (check-assert (check:Prog: value:value:
-                (Let withS:e1:e2: 'x (Intersect withE1:e2: (NoPoints new) (Point withX:y: 0.0 0.0)) (Var withS: 'x))
+                (Let withS:e1:e2: 'x 
+                    (Intersect withE1:e2: (NoPoints new) 
+                        (Point withX:y: 0.0 0.0)) (Var withS: 'x))
                 (NoPoints new)))
 
 (check-assert (check:Prog: value:value:
-                (Let withS:e1:e2: 'x (Point withX:y: 0.0 0.0) (Intersect withE1:e2: (Var withS: 'x) (NoPoints new)))
+                (Let withS:e1:e2: 'x (Point withX:y: 0.0 0.0) 
+                    (Intersect withE1:e2: (NoPoints new) (Var withS: 'x)))
                 (NoPoints new)))
+
+
+(check-assert (check:Prog: value:value:
+                (Let withS:e1:e2: 'x (Point withX:y: 0.0 0.0) 
+                    (Intersect withE1:e2: 
+                        (Let withS:e1:e2: 'x (Point withX:y: 4.0 0.0) 
+                            (Var withS: 'x)) 
+                        (Var withS: 'x)))
+                (NoPoints new)))     
+
+(check-assert (check:Prog: value:value:
+                (Let withS:e1:e2: 'x (Point withX:y: 0.0 0.0) 
+                    (Intersect withE1:e2: 
+                        (Var withS: 'x)
+                        (Let withS:e1:e2: 'x (Point withX:y: 4.0 0.0) 
+                            (Var withS: 'x)) 
+                        ))
+                (NoPoints new)))             
 
 
 
@@ -656,3 +718,34 @@
    value:value: ((e preprocessProg) inline) ans))
 
 ;; Put your unit tests for inlining here!
+
+;; inlining Let, where the introduced variable is immediately used
+(check-assert (check:inline: value:value:
+            (Let withS:e1:e2: 'a (Line withM:b: 2.0 1.0) (Var withS: 'a))
+            (Line withM:b: 2.0 1.0)))
+
+;; OUR TESTS
+
+(check-assert (check:inline: value:value:
+            (Let withS:e1:e2: 'a (Line withM:b: 2.0 1.0) (Var withS: 'a))
+            (Line withM:b: 2.0 1.0)))
+
+(check-assert (check:inline: value:value:
+            (Let withS:e1:e2: 'a (Point withX:y: 0.0 0.0) 
+                (Intersect withE1:e2: (Var withS: 'a) (Point withX:y: 0.0 0.0)))
+            (Intersect withE1:e2: (Point withX:y: 0.0 0.0) 
+                (Point withX:y: 0.0 0.0))))
+
+(check-assert (check:inline: value:value:
+            (Let withS:e1:e2: 'a (Point withX:y: 0.0 0.0) 
+                (Shift withDx:dy:e: 3.0 5.0 (Var withS: 'a)))
+            (Shift withDx:dy:e: 3.0 5.0 (Point withX:y: 0.0 0.0))))
+
+(check-assert (check:inline: value:value:
+                (Let withS:e1:e2: 'x (Point withX:y: 0.0 0.0) 
+                    (Intersect withE1:e2: 
+                        (Var withS: 'x)
+                        (Let withS:e1:e2: 'x (Point withX:y: 4.0 0.0) 
+                            (Var withS: 'x))))
+                (Intersect withE1:e2: (Point withX:y: 0.0 0.0) 
+                    (Point withX:y: 4.0 0.0))))   
